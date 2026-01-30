@@ -1,4 +1,4 @@
-# 🎮 Solvr - Daily LinkedIn Game Solutions
+# 🎮 Solvr - Daily LinkedIn Game Solutions  
 
 ![Solvr Banner](https://img.shields.io/badge/Status-Active-success?style=for-the-badge) ![Next.js](https://img.shields.io/badge/Next.js-15-black?style=for-the-badge&logo=next.js) ![Firebase](https://img.shields.io/badge/Firebase-Storage%20%26%20Firestore-orange?style=for-the-badge&logo=firebase) ![Tailwind](https://img.shields.io/badge/Tailwind_CSS-v4-blue?style=for-the-badge&logo=tailwindcss)
 

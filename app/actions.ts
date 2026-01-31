@@ -5,6 +5,17 @@ import { adminDb, adminStorage } from '@/lib/firebase-admin';
 
 export async function publishGameAction(formData: FormData) {
     try {
+        // Debug: Check environment variables
+        const hasProjectId = !!process.env.FIREBASE_PROJECT_ID;
+        const hasClientEmail = !!process.env.FIREBASE_CLIENT_EMAIL;
+        const hasPrivateKey = !!process.env.FIREBASE_PRIVATE_KEY;
+
+        console.log('Environment check:', { hasProjectId, hasClientEmail, hasPrivateKey });
+
+        if (!hasProjectId || !hasClientEmail || !hasPrivateKey) {
+            throw new Error(`Missing Firebase credentials: ProjectID=${hasProjectId}, Email=${hasClientEmail}, Key=${hasPrivateKey}`);
+        }
+
         const game = formData.get('game') as string;
         const file = formData.get('file') as File;
 
@@ -15,6 +26,7 @@ export async function publishGameAction(formData: FormData) {
 
         // 1. DELETE EXISTING SOLUTION (Data Retention Policy)
         // User wants previous input for the day to be "revoked" / replaced.
+        console.log('Step 1: Checking for existing solutions...');
         const existingDocs = await adminDb.collection('solutions')
             .where('game', '==', game)
             .where('date', '==', today)
@@ -31,7 +43,8 @@ export async function publishGameAction(formData: FormData) {
         }
 
         // 2. Upload to Firebase Storage using Admin SDK
-        console.log(`Uploading file to bucket: ${adminStorage.bucket().name}`);
+        console.log('Step 2: Uploading to Storage...');
+        console.log(`Bucket name: ${adminStorage.bucket().name}`);
         const arrayBuffer = await file.arrayBuffer();
         const buffer = Buffer.from(arrayBuffer);
 
@@ -46,11 +59,11 @@ export async function publishGameAction(formData: FormData) {
         });
 
         // Get public URL
-        // Note: 'public: true' allows access via the public storage.googleapis.com endpoint
         const imageUrl = `https://storage.googleapis.com/${bucket.name}/${filename}`;
         console.log("File uploaded. Public URL:", imageUrl);
 
         // 3. Save to Firestore using Admin SDK
+        console.log('Step 3: Saving to Firestore...');
         const payload = {
             game,
             date: today,
@@ -63,13 +76,21 @@ export async function publishGameAction(formData: FormData) {
         };
 
         await adminDb.collection('solutions').add(payload);
-        console.log("Firestore document created.");
+        console.log("Firestore document created successfully!");
 
         return { success: true, imageUrl };
 
     } catch (error: any) {
-        console.error("Server Action Detailed Error:", error);
-        // Return the exact error message to the client
-        return { success: false, error: `Server Error: ${error.message}` };
+        console.error("=== SERVER ACTION ERROR ===");
+        console.error("Error message:", error.message);
+        console.error("Error stack:", error.stack);
+        console.error("Error code:", error.code);
+        console.error("Full error:", JSON.stringify(error, null, 2));
+
+        // Return detailed error to client
+        return {
+            success: false,
+            error: `Upload failed: ${error.message || 'Unknown error'}${error.code ? ` (Code: ${error.code})` : ''}`
+        };
     }
 }
